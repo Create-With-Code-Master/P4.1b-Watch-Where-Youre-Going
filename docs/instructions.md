@@ -40,7 +40,7 @@ layout: tabbed-assignment
 
 </details></p>
 
-<p><details><summary>Go to the <a href="{{site.data.assignment.lesson}}">lesson</a> and work through the videos.</summary>
+<p><details><summary>Go to the <a href="{{site.data.assignment.lesson}}">lesson</a> and work through the videos starting from the third step, **Set up the player and add a texture.**</summary>
 
 Work in a loop:
 
