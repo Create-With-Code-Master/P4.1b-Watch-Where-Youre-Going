@@ -12,7 +12,7 @@ This template is the boilerplate for a single Canvas assignment.
 1. Create an assignment on Canvas.
 1. Edit the assignment:
    - Switch to HTML mode.
-   - Add an ```<iframe src=""https://create-with-code-master.github.io/P4.1b-Watch-Where-Youre-Going/ width="100%" height="660px">``` tag.
+   - Add an ```<iframe src="https://create-with-code-master.github.io/P4.1b-Watch-Where-Youre-Going/" width="100%" height="660px">``` tag.
    - Use the GitHub pages URL of this repository as the ```src``` artribute of the ```iframe``` tag.
 1. Edit ```docs/_data/assignment.yml``` to reflect the parameters of this assignment. Custom values may be added, they can be referenced in [Liquid][] code as ```site.data.assignments.valueName```.
    - If an **outcome** is set, the text will be displayed above the tabs.
