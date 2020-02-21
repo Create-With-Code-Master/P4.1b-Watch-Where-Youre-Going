@@ -1,13 +1,13 @@
 # Configuration that is shared between all of the pages in this assignment.
 #
 # Git stuff
-git-curr-branch:
+git-curr-branch: lesson-1
 git-prev-branch: 
 # Link to an external lesson (e.g., a lesson on Code.org or TestOut).
-lesson:
+lesson: https://learn.unity.com/tutorial/lesson-4-1-watch-where-you-re-going
 # If not empty, display the text at the top of the page (or wherever the template does the include of outcome.html)
 # below the tabs
-outcome:
+outcome: The camera will rotate smoothly around a focal point in the center of the island, following horizontal inputs from the player. The player will control a textured sphere, moving it forward and backward along the camera axis in response to vertical inputs.
 # Link to lesson slides, displayed on Resources tab if not empty.
 slides:
 # Name and URL of repository holding the starter code for this assignment.
