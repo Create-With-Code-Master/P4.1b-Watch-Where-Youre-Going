@@ -6,9 +6,9 @@ layout: tabbed-assignment
 
 By the end of this lesson, you will be able to:
 
-* 
-* 
-* 
+* Apply Texture wraps to objects
+* Attaching a camera to its focal point using parent-child relationships
+* Transform objects based on local XYZ values
 
 <!-- Don't edit links here, change them in _data/assignment.yml instead, -->
 
