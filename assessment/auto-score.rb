@@ -13,7 +13,7 @@ require 'pathname'
   clone: 'git clone',
   debug: false,
   gitignore_size: 500,
-  max_points: 5,
+  max_points: 15,
   resubmit_threshold: 0.6,
   scene: "Prototype 4.unity",
   tmp_dir: 'tmp',
