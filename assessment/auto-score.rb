@@ -12,9 +12,10 @@ require 'pathname'
   branch: 'lesson-1',
   clone: 'git clone',
   debug: false,
+  empty_script_size: 323,
   gitignore_size: 500,
-  max_points: 15,
-  resubmit_threshold: 0.6,
+  max_points: 9,
+  resubmit_threshold: 0.7,
   scene: "Prototype 4.unity",
   tmp_dir: 'tmp',
   verbose: false
@@ -29,7 +30,7 @@ OptionParser.new do |o|
   o.on('-v')        { |v| @opts[:verbose] = true }
 end.parse!
 
-repo_url = ARGV.pop
+remote = ARGV.pop
 
 @score = 0
 @comments = []
@@ -61,29 +62,24 @@ def clone_and_score(url, path)
   # - Failure: the URL "looks" good, but failed to clone - perhaps a private repo.
   # - Failure: the URL does not match the expected pattern.
 
-  cmd = "#{@opts[:clone]} #{url} #{path}"
-
-  #stdout = %x( #{cmd} )
-  fd0, fd1, fd2, wait = popen3(cmd)
-  fd0.close
-
-  stdout = fd1.read ; fd1.close
-  stderr = fd2.read ; fd2.close
-
-  if (wait.value == 0)
+  if (clone(url, path) == 0)
     # Success
     points = 1
     msg = ''
   else
     # XXX: clean up regexp handling - don't bury it here.
     points = 0
-    msg = "Unable to clone \'#{url}\'. "
+    msg = "I was unable to clone your repository: \'#{url}\'. "
     if (url.match(/\/[Pp]rototype-*[1-5]$/))
       # URL seems plausible
-      msg += "Please check the URL and make sure the repository isn't private."
+      msg += "Please double check the URL and make sure the repository isn't " +
+             "private.\n\nIf it is set to private, you will see a lock icon "  +
+             "next to the repository name in GitHub Desktop. If you see the "  +
+             "lock icon, go to the repository on the GitHub website, there "   +
+             "you can make the repository public on the Settings tab."
     else
       # ...or not.
-      msg += "Please check the URL."
+      msg += "Please double check the URL."
     end
   end
   return points, msg
@@ -163,7 +159,17 @@ def checkout_branch_and_score(path, branch)
   return points, msg
 end
 
-# TODO: clone() and clone_and_score()
+def clone(url, path)
+  cmd = "#{@opts[:clone]} #{url} #{path}"
+
+  fd0, fd1, fd2, wait = popen3(cmd)
+  fd0.close
+
+  stdout = fd1.read ; fd1.close
+  stderr = fd2.read ; fd2.close
+
+  return wait.value
+end
 
 def checkout_branch(path, branch)
   # TODO: do a better job with messages from Git.
@@ -184,11 +190,60 @@ def checkout_branch(path, branch)
   return wait.value
 end
 
-local_repo = repo_url.gsub(@opts[:base_url], '')
-local_repo = "#{@opts[:tmp_dir]}/#{local_repo}" if @opts[:tmp_dir]
-repo_name = local_repo.gsub(/^.*\//, '')
+def find_folder(parent, name)
+  # Check that a folder exists. Also check for "close matches" on the name.
+  # If a match is found, return the path.
+  path = nil
+  likely_names = name_variations(name)
+  likely_names.each do |n|
+    path = "#{parent}/#{n}"
+    break if Pathname.new(path).directory?
+  end
+  puts "find_folder(#{name}): returning path of \'#{path}\'"
+  return path
+end
 
-points, comment = clone_and_score(repo_url, local_repo)
+def name_variations(name)
+  variations = []
+  variations.push(name)
+  variations.push(name.downcase)
+  variations.push(name.upcase)
+  variations.push(name.gsub(/[ _-]/, ''))
+  return variations
+end
+
+def check_script(path, name)
+  # TODO: take a block to check specifics
+  #       check class name for match with file name
+  #       check class name for default value
+  #       basic parse / compile check?
+  #       diff against "likely suspects?"
+  #       check in the root of the Assets folder
+  #       check for "reasonable" misspellings
+  script = Pathname.new("#{path}/#{name}")
+  if (script.file?)
+    if (script.size > @opts[:empty_script_size])
+      points = 1
+      msg = ''
+    else
+      points = 0
+      msg = "Your \'#{name}\' script seems too short. Did you save your  "     +
+            "changes before committing?"
+    end
+  else
+    points = 0
+    msg = "I couldn't find your \'#{name}\' script in the 'Scripts' folder. "  +
+          "Make sure you've named it correctly (and be sure to change the "    +
+          "class name if rename the file), or perhaps you created it "         +
+          "in the 'Assets' folder or it is another folder."
+  end
+  return points, msg
+end
+
+local_repo = remote.gsub(@opts[:base_url], '')
+local_repo = "#{@opts[:tmp_dir]}/#{local_repo}" if @opts[:tmp_dir]
+
+points, comment = clone_and_score(remote, local_repo)
 @score += points
 @comments.push(comment)
 done(true) if (points == 0) # Clone failed, quit
@@ -218,6 +273,37 @@ else
         "repository (#{items}) seems too low."
   @comments.push(msg)
 end
+
+# Check for Scripts folder
+
+scripts_folder = find_folder("#{local_repo}/Assets", 'Scripts')
+if (scripts_folder == "#{local_repo}/Assets/Scripts")
+  @score += 2
+elsif (scripts_folder != nil)
+    @score += 1
+    msg = "By convention, scripts should be in a folder called 'Scripts' "     +
+          "in the project's 'Assets' folder. You seem to be using a folder "   +
+          "called #{File.basename(scripts_folder)}. Following the convention " +
+          "will make it easier for others to work with your projects."
+else
+  # scripts_folder == nil (no reasonable folder found)
+  msg = "I didn't find a 'Scripts' folder in your project.\n\nThe 'Scripts'"   +
+        "folder helps to keep your project organized and makes it easier to"   +
+        "find your scripts as your projects get bigger."
+  # Look for scripts in the Assets folder.
+  scripts_folder = "#{local_repo}/Assets"
+end
+@comments.push(msg)
+
+scripts = %w[RotateCamera.cs PlayerController.cs]
+script_points = 0
+scripts.each do |s|
+  points, comment = check_script(scripts_folder, s)
+  script_points += points
+  @comments.push(msg)
+end
+@score += script_points
+@resubmit = true if (script_points < scripts.length)
 
 # Confirm that the prototype scene file exists & the sample has been removed
 
