@@ -37,9 +37,13 @@ remote = ARGV.pop
 @resubmit = false
 
 def done(resubmit)
-  if (@opts[:debug])
+  debug = @opts[:debug]
+  if (debug)
     puts "done(): resubmit = #{resubmit}; @score = #{@score};\n"               +
-         "@comments = \'#{@comments}\'"
+         "@comments ="
+    @comments.each do |c|
+      puts "  - #{c}"
+    end
   end
 
   msg = 'After correcting any problems you may resubmit up until the assignment closes.'
@@ -197,9 +201,11 @@ def find_folder(parent, name)
   likely_names = name_variations(name)
   likely_names.each do |n|
     path = "#{parent}/#{n}"
+    puts "find_folder(#{name}): trying \'#{path}\'" if @opts[:debug]
     break if Pathname.new(path).directory?
+    path = nil
   end
-  puts "find_folder(#{name}): returning path of \'#{path}\'"
+  puts "find_folder(#{name}): returning path of \'#{path}\'"  if @opts[:debug]
   return path
 end
 
@@ -220,23 +226,29 @@ def check_script(path, name)
   #       diff against "likely suspects?"
   #       check in the root of the Assets folder
   #       check for "reasonable" misspellings
-  script = Pathname.new("#{path}/#{name}")
+  debug = @opts[:debug]
+  script_path = "#{path}/#{name}"
+  script = Pathname.new(script_path)
   if (script.file?)
     if (script.size > @opts[:empty_script_size])
+      puts "check_script(#{script_path}): found, size = #{script.size}" if (debug)
       points = 1
       msg = ''
     else
+      puts "check_script(#{script_path}): found, size = #{script.size} (too small)"  if (debug)
       points = 0
       msg = "Your \'#{name}\' script seems too short. Did you save your  "     +
             "changes before committing?"
     end
   else
+    puts "check_script(#{script_path}): not found" if (debug)
     points = 0
     msg = "I couldn't find your \'#{name}\' script in the 'Scripts' folder. "  +
           "Make sure you've named it correctly (and be sure to change the "    +
           "class name if rename the file), or perhaps you created it "         +
-          "in the 'Assets' folder or it is another folder."
+          "in another folder."
   end
+  puts "check_script(#{script_path}): returning - points = #{points}; msg = \'#{msg}\'"  if (debug)
   return points, msg
 end
 
@@ -287,9 +299,10 @@ elsif (scripts_folder != nil)
           "will make it easier for others to work with your projects."
 else
   # scripts_folder == nil (no reasonable folder found)
-  msg = "I didn't find a 'Scripts' folder in your project.\n\nThe 'Scripts'"   +
-        "folder helps to keep your project organized and makes it easier to"   +
-        "find your scripts as your projects get bigger."
+  msg = "I didn't find a 'Scripts' folder in your project. Have you "          +
+        "committed and pushed your changes in GitHub Desktop?\n\n"             +
+        "The 'Scripts' folder helps to keep your project organized and makes " +
+        "it easier to find your scripts as your projects get bigger."
   # Look for scripts in the Assets folder.
   scripts_folder = "#{local_repo}/Assets"
 end
@@ -300,7 +313,7 @@ script_points = 0
 scripts.each do |s|
   points, comment = check_script(scripts_folder, s)
   script_points += points
-  @comments.push(msg)
+  @comments.push(comment)
 end
 @score += script_points
 @resubmit = true if (script_points < scripts.length)
