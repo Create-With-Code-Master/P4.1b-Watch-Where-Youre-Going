@@ -2,7 +2,6 @@
 
 # Automated checks
 
-require 'optparse'
 require 'open3'         # Used by clone().
 include Open3
 require 'pathname'
@@ -20,17 +19,6 @@ require 'pathname'
   tmp_dir: 'tmp',
   verbose: false
 }
-
-OptionParser.new do |o|
-  o.banner = "Usage: #{$0} [options]"
-
-  o.on('-b BRANCH') { |v| @opts[:branch] = v }
-  o.on('-d')        { |v| @opts[:debug] = true }
-  o.on('-T TMPDIR') { |v| @opts[:tmp_dir] = v }
-  o.on('-v')        { |v| @opts[:verbose] = true }
-end.parse!
-
-remote = ARGV.pop
 
 @score = 0
 @comments = []
@@ -194,6 +182,7 @@ def checkout_branch(path, branch)
   return wait.value
 end
 
+# Find a folder, or one with a closely matching name.
 def find_folder(parent, name)
   # Check that a folder exists. Also check for "close matches" on the name.
   # If a match is found, return the path.
@@ -209,6 +198,7 @@ def find_folder(parent, name)
   return path
 end
 
+# Generate variations on a file or directory name.
 def name_variations(name)
   variations = []
   variations.push(name)
@@ -216,6 +206,23 @@ def name_variations(name)
   variations.push(name.upcase)
   variations.push(name.gsub(/[ _-]/, ''))
   return variations
+end
+
+# Find a Git branch that (roughly) matches the expected branch.
+def find_branch(repo, branch)
+  name, num = branch.split('-')
+
+  variations = [ branch, "#{name}#{num}", "#{name}_#{num}" ]
+
+  branches = %x( cd #{repo} ; git branch --list ).gsub('*', '').split("\n")
+  branches.each do |b|
+    b.strip!
+    variations.each do |v|
+      return b if (b == v)
+    end
+  end
+
+  return nil
 end
 
 def check_script(path, name)
@@ -252,93 +259,109 @@ def check_script(path, name)
   return points, msg
 end
 
-local_repo = remote.gsub(@opts[:base_url], '')
-local_repo = "#{@opts[:tmp_dir]}/#{local_repo}" if @opts[:tmp_dir]
+if __FILE__ == $0
+  require 'optparse'
 
-points, comment = clone_and_score(remote, local_repo)
-@score += points
-@comments.push(comment)
-done(true) if (points == 0) # Clone failed, quit
+  OptionParser.new do |o|
+    o.banner = "Usage: #{$0} [options]"
 
-# Confirm that the repo looks sane.
+    o.on('-b BRANCH') { |v| @opts[:branch] = v }
+    o.on('-d')        { |v| @opts[:debug] = true }
+    o.on('-T TMPDIR') { |v| @opts[:tmp_dir] = v }
+    o.on('-v')        { |v| @opts[:verbose] = true }
+  end.parse!
 
-points, comment = check_repo_sanity(local_repo, 20, 200)
-@score += points
-@comments.push(comment)
-done(true) if (points == 0) # Something is seriously wrong, quit
+  remote = ARGV.pop
 
-# Check for a lesson-1 branch.
+  local_repo = remote.gsub(@opts[:base_url], '')
+  local_repo = "#{@opts[:tmp_dir]}/#{local_repo}" if @opts[:tmp_dir]
 
-points, comment = checkout_branch_and_score(local_repo, @opts[:branch])
-@score += points
-@comments.push(comment)
-
-# Check that assets seem to have been imported. Should be on lesson branch
-# at this point.
-
-items = Dir["#{local_repo}/**/*"].length
-if (items > 50) # XXX: use real numbers, have alread checked for too many.
-  @score += 1
-else
-  # Will we still be on the master branch if the checkout failed?
-  msg = "Have you imported the project assets? The file count in your "        +
-        "repository (#{items}) seems too low."
-  @comments.push(msg)
-end
-
-# Check for Scripts folder
-
-scripts_folder = find_folder("#{local_repo}/Assets", 'Scripts')
-if (scripts_folder == "#{local_repo}/Assets/Scripts")
-  @score += 2
-elsif (scripts_folder != nil)
-    @score += 1
-    msg = "By convention, scripts should be in a folder called 'Scripts' "     +
-          "in the project's 'Assets' folder. You seem to be using a folder "   +
-          "called #{File.basename(scripts_folder)}. Following the convention " +
-          "will make it easier for others to work with your projects."
-else
-  # scripts_folder == nil (no reasonable folder found)
-  msg = "I didn't find a 'Scripts' folder in your project. Have you "          +
-        "committed and pushed your changes in GitHub Desktop?\n\n"             +
-        "The 'Scripts' folder helps to keep your project organized and makes " +
-        "it easier to find your scripts as your projects get bigger."
-  # Look for scripts in the Assets folder.
-  scripts_folder = "#{local_repo}/Assets"
-end
-@comments.push(msg)
-
-scripts = %w[RotateCamera.cs PlayerController.cs]
-script_points = 0
-scripts.each do |s|
-  points, comment = check_script(scripts_folder, s)
-  script_points += points
+  points, comment = clone_and_score(remote, local_repo)
+  @score += points
   @comments.push(comment)
-end
-@score += script_points
-@resubmit = true if (script_points < scripts.length)
+  done(true) if (points == 0) # Clone failed, quit
 
-# Confirm that the prototype scene file exists & the sample has been removed
+  # Confirm that the repo looks sane.
 
-# Make sure we are back on the master branch.
-checkout_branch(local_repo, 'master')
+  points, comment = check_repo_sanity(local_repo, 20, 200)
+  @score += points
+  @comments.push(comment)
+  done(true) if (points == 0) # Something is seriously wrong, quit
 
-prototype_scene = Pathname.new("#{local_repo}/Assets/Scenes/#{@opts[:scene]}")
-if (prototype_scene.file?)
-  @score += 1
-else
-  msg = "The Prototype 4 scene file is missing from the Scenes folder on the " +
-        "master branch. Did you forget to merge your lesson-1 branch into "    +
-        "the master branch after importing your assets? Having a solid "       +
-        "Having a solid starting point that you can go back to is a big help " +
-        "if you make a mistake and need (or want) to back out of it."
+  # Check for a lesson-1 branch.
+
+  points, comment = checkout_branch_and_score(local_repo, @opts[:branch])
+  @score += points
+  @comments.push(comment)
+
+  # Check that assets seem to have been imported. Should be on lesson branch
+  # at this point.
+
+  items = Dir["#{local_repo}/**/*"].length
+  if (items > 50) # XXX: use real numbers, have alread checked for too many.
+    @score += 1
+  else
+    # Will we still be on the master branch if the checkout failed?
+    msg = "Have you imported the project assets? The file count in your "        +
+          "repository (#{items}) seems too low."
+    @comments.push(msg)
+  end
+
+  # Check for Scripts folder
+
+  scripts_folder = find_folder("#{local_repo}/Assets", 'Scripts')
+  if (scripts_folder == "#{local_repo}/Assets/Scripts")
+    @score += 2
+  elsif (scripts_folder != nil)
+      @score += 1
+      msg = "By convention, scripts should be in a folder called 'Scripts' "     +
+            "in the project's 'Assets' folder. You seem to be using a folder "   +
+            "called #{File.basename(scripts_folder)}. Following the convention " +
+            "will make it easier for others to work with your projects."
+  else
+    # scripts_folder == nil (no reasonable folder found)
+    msg = "I didn't find a 'Scripts' folder in your project. Have you "          +
+          "committed and pushed your changes in GitHub Desktop?\n\n"             +
+          "The 'Scripts' folder helps to keep your project organized and makes " +
+          "it easier to find your scripts as your projects get bigger."
+    # Look for scripts in the Assets folder.
+    scripts_folder = "#{local_repo}/Assets"
+  end
   @comments.push(msg)
-end
 
-sample_scene = Pathname.new("#{local_repo}/Assets/Scenes/Sample Scene.unity")
-if (sample_scene.file?)
-  msg = "Don't forget to remove the Sample Scene."
-  @comments.push(msg)
-end
+  scripts = %w[RotateCamera.cs PlayerController.cs]
+  script_points = 0
+  scripts.each do |s|
+    points, comment = check_script(scripts_folder, s)
+    script_points += points
+    @comments.push(comment)
+  end
+  @score += script_points
+  @resubmit = true if (script_points < scripts.length)
 
-done(@resubmit)
+  # Confirm that the prototype scene file exists & the sample has been removed
+
+  # Make sure we are back on the master branch.
+  checkout_branch(local_repo, 'master')
+
+  prototype_scene = Pathname.new("#{local_repo}/Assets/Scenes/#{@opts[:scene]}")
+  if (prototype_scene.file?)
+    @score += 1
+  else
+    msg = "The Prototype 4 scene file is missing from the Scenes folder on the " +
+          "master branch. Did you forget to merge your lesson-1 branch into "    +
+          "the master branch after importing your assets? Having a solid "       +
+          "Having a solid starting point that you can go back to is a big help " +
+          "if you make a mistake and need (or want) to back out of it."
+    @comments.push(msg)
+  end
+
+  sample_scene = Pathname.new("#{local_repo}/Assets/Scenes/Sample Scene.unity")
+  if (sample_scene.file?)
+    msg = "Don't forget to remove the Sample Scene."
+    @comments.push(msg)
+  end
+
+  done(@resubmit)
+
+end
