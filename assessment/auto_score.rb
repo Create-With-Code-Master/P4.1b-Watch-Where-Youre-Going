@@ -6,6 +6,7 @@ require 'json'
 require 'open3'         # Used by clone().
 include Open3
 require 'pathname'
+require 'pry'
 
 @opts = {
   base_url: 'https://github.com/',
@@ -39,6 +40,7 @@ def done(resubmit)
   fb['comments'] = ''
   msg = 'After correcting any problems you may resubmit up until the assignment closes.'
   @comments.push(msg) if (resubmit || @score <= (@opts[:max_points] * @opts[:resubmit_threshold]))
+  binding.pry
   fb['score'] = @score
   if ( @comments.length > 1 || @comments[0].length > 0 )
     @comments.each do |c|
