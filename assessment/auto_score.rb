@@ -368,7 +368,6 @@ def scan_dirs(dir, name, limit)
     f = {'directory': dir,'name': e, 'distance': d}
     @distances.push(f)
   end
-  binding.pry
   scan_dirs(dir.parent, name, limit) if (dir.parent.to_s.match?(limit))
 end
 
