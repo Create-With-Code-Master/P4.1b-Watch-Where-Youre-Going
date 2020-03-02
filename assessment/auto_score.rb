@@ -40,7 +40,6 @@ def done(resubmit)
   fb['comments'] = ''
   msg = 'After correcting any problems you may resubmit up until the assignment closes.'
   @comments.push(msg) if (resubmit || @score <= (@opts[:max_points] * @opts[:resubmit_threshold]))
-  # binding.pry
   fb['score'] = @score
   if ( @comments.length > 1 || @comments[0].length > 0 )
     @comments.each do |c|
@@ -48,6 +47,7 @@ def done(resubmit)
     end
   end
   puts fb.to_json
+  # Because we may be called part way through...
   exit
 end
 
