@@ -255,7 +255,7 @@ def check_script(path, name)
           "in another folder."
   when 0
     # Exact match.
-    if (script.size > @opts[:empty_script_size])
+    if (Pathname.new(script_path).size > @opts[:empty_script_size])
       puts "check_script(#{script_path}): found, size = #{script.size}" if (debug)
       points = 1
       msg = ''
@@ -277,8 +277,9 @@ def check_script(path, name)
     possibilities.each do |p|
       msg += " #{p[:name]}\n"
     end
-    msg += "If one of these is right, it should be renamed to #{name}. You "   +
-           "probably also need to update the class name in the file to match."
+    msg += "If #{(possibilities.length == 1) ? 'this' : 'one of these'} is "   +
+           "right, it should be renamed to #{name}. You will probabaly need"   +
+           "to update the class name in the file to match."
   end
   # if (script.file?)
   #   if (script.size > @opts[:empty_script_size])
