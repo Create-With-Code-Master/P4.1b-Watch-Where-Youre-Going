@@ -36,12 +36,13 @@ def done(resubmit)
   end
 
   fb = {}
+  fb['comments'] = ''
   msg = 'After correcting any problems you may resubmit up until the assignment closes.'
   @comments.push(msg) if (resubmit || @score <= (@opts[:max_points] * @opts[:resubmit_threshold]))
   fb['score'] = @score
   if ( @comments.length > 1 || @comments[0].length > 0 )
     @comments.each do |c|
-      fb['comment'] += "#{c}\n\n" if (c != nil && c.length > 0)
+      fb['comments'] += "#{c}\n\n" if (c != nil && c.length > 0)
     end
   end
   puts fb.to_json
