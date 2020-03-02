@@ -278,7 +278,7 @@ def check_script(path, name)
       msg += " #{p[:name]}\n"
     end
     msg += "If #{(possibilities.length == 1) ? 'this' : 'one of these'} is "   +
-           "right, it should be renamed to #{name}. You will probabaly need"   +
+           "right, it should be renamed to #{name}. You will probabaly need "   +
            "to update the class name in the file to match."
   end
   # if (script.file?)
