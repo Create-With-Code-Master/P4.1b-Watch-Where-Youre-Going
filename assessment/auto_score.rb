@@ -356,7 +356,7 @@ def fuzzy_file_match(name, limit = 'Assets', threshold = 3)
   # Nothing seems to match
   @distances = []
   @distances.push({'directory': nil, 'name': nil, 'distance': -1})
-  return
+  return @distances
 end
 
 def scan_dirs(dir, name, limit)
